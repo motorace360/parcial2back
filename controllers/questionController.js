@@ -1,5 +1,6 @@
 const Question = require('../models/Question');
 const OpenAI = require('openai');
+const { executeWithRetry } = require('../utils/dbUtils');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -33,7 +34,7 @@ Devuelve la respuesta en formato JSON con este formato:
     const questions = JSON.parse(response);
 
     const newSet = new Question({ topic, questions });
-    await newSet.save();
+    await executeWithRetry(async () => await newSet.save());
 
     res.status(200).json(newSet);
   } catch (error) {
@@ -41,6 +42,8 @@ Devuelve la respuesta en formato JSON con este formato:
 
     if (error.status === 429) {
       res.status(429).json({ error: 'Has excedido tu cuota de uso de OpenAI. Por favor, revisa tu plan y detalles de facturación.' });
+    } else if (error.message.includes('timed out')) {
+      res.status(503).json({ error: 'Error de conexión con la base de datos. Por favor, intenta nuevamente.' });
     } else {
       res.status(500).json({ error: 'Error generando preguntas' });
     }
