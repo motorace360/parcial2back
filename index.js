@@ -6,38 +6,58 @@ const cors = require('cors');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Update CORS configuration
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://parcial2front-omega.vercel.app'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
+
 app.use(express.json());
 
-const connectWithRetry = async () => {
-  const options = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    retryWrites: true,
-    w: 'majority',
-    // Allow connections from anywhere (required for Vercel)
-    directConnection: true,
-  };
-
+// MongoDB connection with retry logic
+const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, options);
-    console.log('MongoDB conectado');
-  } catch (err) {
-    console.error('Error de conexión MongoDB:', err);
-    // Retry connection after 5 seconds
-    setTimeout(connectWithRetry, 5000);
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    return true;
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    return false;
   }
 };
 
-// Initial connection
-connectWithRetry();
-
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB desconectado - intentando reconectar...');
-  connectWithRetry();
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.json({ 
+    status: 'ok',
+    database: dbStatus
+  });
 });
+
+// Initialize DB connection
+let retries = 0;
+const maxRetries = 5;
+
+const initializeDB = async () => {
+  while (retries < maxRetries) {
+    const connected = await connectDB();
+    if (connected) break;
+    
+    retries++;
+    console.log(`Retry attempt ${retries}/${maxRetries}`);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+};
+
+initializeDB();
 
 const questionRoutes = require('./routes/questionRoutes');
 app.use('/api/questions', questionRoutes);
