@@ -85,15 +85,23 @@ const verifyAnswers = async (req, res) => {
       details: []
     };
 
+    const normalizeAnswer = (answer) => {
+      // Eliminar el prefijo de letra (A., B., C., D.) si existe
+      return answer.replace(/^[A-D]\.\s*/, '').trim();
+    };
+
     questions.forEach((q, index) => {
-      // Comparación directa sin normalización
-      const isCorrect = q.correctAnswer === userAnswers[index];
+      const normalizedCorrect = normalizeAnswer(q.correctAnswer);
+      const normalizedUser = normalizeAnswer(userAnswers[index]);
+      const isCorrect = normalizedCorrect === normalizedUser;
       
       results.details.push({
         isCorrect,
         question: q.question,
         userAnswer: userAnswers[index],
-        correctAnswer: q.correctAnswer
+        correctAnswer: q.correctAnswer,
+        normalizedCorrect,
+        normalizedUser
       });
       
       if (isCorrect) {
