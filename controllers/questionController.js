@@ -86,17 +86,14 @@ const verifyAnswers = async (req, res) => {
     };
 
     questions.forEach((q, index) => {
-      // Normalizar las respuestas (eliminar espacios y convertir a minúsculas)
-      const normalizedCorrect = q.correctAnswer.trim().toLowerCase();
-      const normalizedUser = userAnswers[index]?.trim().toLowerCase();
+      // Comparación directa sin normalización
+      const isCorrect = q.correctAnswer === userAnswers[index];
       
-      const isCorrect = normalizedCorrect === normalizedUser;
-
       results.details.push({
         isCorrect,
-        correctAnswer: q.correctAnswer,
+        question: q.question,
         userAnswer: userAnswers[index],
-        explanation: `La respuesta ${isCorrect ? 'es correcta' : 'correcta era: ' + q.correctAnswer}`
+        correctAnswer: q.correctAnswer
       });
       
       if (isCorrect) {
