@@ -13,34 +13,27 @@ const generateQuestions = async (req, res) => {
   try {
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
-      throw new Error('Database connection is not ready');
+      throw new Error('Database connection not ready');
     }
-
-    // Validate topic
-    if (!topic || typeof topic !== 'string') {
-      return res.status(400).json({ error: 'Invalid topic provided' });
-    }
-
-    const prompt = `
-      Crea 5 preguntas de opción múltiple sobre el tema "${topic}". 
-      Cada pregunta debe tener 4 opciones (A, B, C, D) y especifica cuál es la correcta.
-      Las preguntas deben ser desafiantes y educativas.
-      Devuelve la respuesta en formato JSON con este formato:
-      [
-        {
-          "question": "¿Pregunta 1?",
-          "options": ["A", "B", "C", "D"],
-          "correctAnswer": "B"
-        }
-      ]
-    `;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ 
+        role: 'user', 
+        content: `Crea 5 preguntas de opción múltiple sobre el tema "${topic}". 
+                  Cada pregunta debe tener 4 opciones (A, B, C, D) y especifica cuál es la correcta.
+                  Las preguntas deben ser desafiantes y educativas.
+                  Devuelve la respuesta en formato JSON con este formato:
+                  [
+                    {
+                      "question": "¿Pregunta 1?",
+                      "options": ["A", "B", "C", "D"],
+                      "correctAnswer": "B"
+                    }
+                  ]`
+      }],
       temperature: 0.7,
-      max_tokens: 1000,
-      timeout: 15000
+      max_tokens: 1000
     });
 
     const response = completion.choices[0].message.content;
@@ -62,23 +55,22 @@ const generateQuestions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error generating questions:', error);
 
-    if (error.message.includes('Database connection')) {
-      return res.status(503).json({ 
-        error: 'Database service unavailable. Please try again in a few moments.' 
+    if (error instanceof SyntaxError) {
+      return res.status(500).json({ 
+        error: 'Error processing AI response' 
       });
     }
 
-    if (error.message.includes('OpenAI')) {
+    if (error.message.includes('Database connection')) {
       return res.status(503).json({ 
-        error: 'Question generation service temporarily unavailable' 
+        error: 'Database service unavailable' 
       });
     }
 
     res.status(500).json({ 
-      error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Error generating questions'
     });
   }
 };
