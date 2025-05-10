@@ -58,4 +58,47 @@ Devuelve la respuesta en formato JSON con este formato:
   }
 };
 
-module.exports = { generateQuestions };
+const verifyAnswers = async (req, res) => {
+  try {
+    const { questions, userAnswers } = req.body;
+    
+    const results = {
+      correct: 0,
+      incorrect: 0,
+      details: []
+    };
+
+    questions.forEach((q, index) => {
+      const isCorrect = q.correctAnswer === userAnswers[index];
+      results.details.push({
+        isCorrect,
+        correctAnswer: q.correctAnswer
+      });
+      
+      if (isCorrect) {
+        results.correct++;
+      } else {
+        results.incorrect++;
+      }
+    });
+
+    // Save game results
+    const gameSession = new Question({
+      topic: questions[0].topic,
+      questions,
+      gameResults: [{
+        userAnswers,
+        correctCount: results.correct,
+        incorrectCount: results.incorrect
+      }]
+    });
+    await gameSession.save();
+
+    res.json(results);
+  } catch (error) {
+    console.error('Error verifying answers:', error);
+    res.status(500).json({ error: 'Error al verificar respuestas' });
+  }
+};
+
+module.exports = { generateQuestions, verifyAnswers };

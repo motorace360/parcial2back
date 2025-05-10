@@ -8,6 +8,14 @@ const questionSchema = new mongoose.Schema({
             options: [String],
             correctAnswer: String
         }
+    ],
+    gameResults: [
+        {
+            userAnswers: Map,
+            correctCount: Number,
+            incorrectCount: Number,
+            timestamp: { type: Date, default: Date.now }
+        }
     ]
 }, { timestamps: true });
 
