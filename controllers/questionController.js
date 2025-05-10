@@ -38,7 +38,12 @@ Devuelve la respuesta en formato JSON con este formato:
     res.status(200).json(newSet);
   } catch (error) {
     console.error('❌ Error generando preguntas:', error.message);
-    res.status(500).json({ error: 'Error generando preguntas' });
+
+    if (error.status === 429) {
+      res.status(429).json({ error: 'Has excedido tu cuota de uso de OpenAI. Por favor, revisa tu plan y detalles de facturación.' });
+    } else {
+      res.status(500).json({ error: 'Error generando preguntas' });
+    }
   }
 };
 
