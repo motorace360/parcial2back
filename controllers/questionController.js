@@ -85,21 +85,47 @@ const verifyAnswers = async (req, res) => {
       details: []
     };
 
+    // Función mejorada para normalizar respuestas
     const normalizeAnswer = (answer) => {
-      // Eliminar el prefijo de letra (A., B., C., D.) si existe
-      return answer.replace(/^[A-D]\.\s*/, '').trim();
+      if (!answer) return '';
+      // Convertir a minúsculas y eliminar espacios extra
+      let normalized = answer.toLowerCase().trim();
+      // Eliminar cualquier prefijo de letra (A., B., C., D.)
+      normalized = normalized.replace(/^[abcd][\.\)\s]+/i, '');
+      // Eliminar espacios extras y puntuación
+      normalized = normalized.replace(/\s+/g, ' ').trim();
+      return normalized;
     };
 
     questions.forEach((q, index) => {
-      const normalizedCorrect = normalizeAnswer(q.correctAnswer);
-      const normalizedUser = normalizeAnswer(userAnswers[index]);
-      const isCorrect = normalizedCorrect === normalizedUser;
+      const correctAnswer = q.correctAnswer;
+      const userAnswer = userAnswers[index];
+      
+      // Normalizar ambas respuestas
+      const normalizedCorrect = normalizeAnswer(correctAnswer);
+      const normalizedUser = normalizeAnswer(userAnswer);
+      
+      // Verificar si la respuesta es correcta
+      let isCorrect = false;
+      
+      // Comparar la respuesta normalizada
+      if (normalizedCorrect === normalizedUser) {
+        isCorrect = true;
+      }
+      // Comparar la respuesta exacta como respaldo
+      else if (correctAnswer === userAnswer) {
+        isCorrect = true;
+      }
+      // Comparar solo la letra si es una opción múltiple
+      else if (correctAnswer.match(/^[ABCD]/) && userAnswer.match(/^[ABCD]/)) {
+        isCorrect = correctAnswer[0] === userAnswer[0];
+      }
       
       results.details.push({
         isCorrect,
         question: q.question,
-        userAnswer: userAnswers[index],
-        correctAnswer: q.correctAnswer,
+        userAnswer: userAnswer,
+        correctAnswer: correctAnswer,
         normalizedCorrect,
         normalizedUser
       });
@@ -111,17 +137,8 @@ const verifyAnswers = async (req, res) => {
       }
     });
 
-    // Save game results
-    const gameSession = new Question({
-      topic: questions[0].topic,
-      questions,
-      gameResults: [{
-        userAnswers,
-        correctCount: results.correct,
-        incorrectCount: results.incorrect
-      }]
-    });
-    await gameSession.save();
+    // Imprimir para debugging
+    console.log('Results:', JSON.stringify(results, null, 2));
 
     res.json(results);
   } catch (error) {
